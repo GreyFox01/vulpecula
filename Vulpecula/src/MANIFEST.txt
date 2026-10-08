@@ -1,0 +1,39 @@
+# MANIFEST.txt - the files Vulpecula/src/ must contain.
+#
+# WHY THIS EXISTS
+#
+# Arduino compiles a sketch's src/ folder, and a MISSING module fails with
+# "src/vulpecula.h: No such file or directory" - an error that points at a
+# header rather than at the real problem, which is that files have gone.
+#
+# This happened after firmware modules turned up in reference_beacon/ and were
+# deleted from there: they had been MOVED out of src/, not copied, so cleaning
+# the beacon folder destroyed part of the firmware.
+#
+# Verify a working copy against this list:
+#     powershell -ExecutionPolicy Bypass -File tools\check_layout.ps1
+#     python3 test/sketch_hygiene_check.py
+#
+# Keep it in step when adding or removing a module; the Python check fails if
+# it drifts from what is actually in src/.
+README.md
+ble_cap.cpp
+calib.cpp
+classify.cpp
+config.h
+display.cpp
+importdb.cpp
+logsd.cpp
+nvsstore.cpp
+parsers.cpp
+proximity.cpp
+pure.h
+sched.cpp
+touch.cpp
+tracks.cpp
+triage.cpp
+types.h
+ui.cpp
+vendor.cpp
+vulpecula.h
+wifi_cap.cpp

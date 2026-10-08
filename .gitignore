@@ -1,0 +1,56 @@
+# Arduino / PlatformIO build output
+build/
+.pio/
+*.bin
+*.elf
+*.map
+*.hex
+*.o
+*.d
+
+# Arduino IDE sketch profiles and per-machine settings
+sketch.yaml
+*.ino.cpp
+
+# Vendored TFT_eSPI C5 backend, if you ever go back to that route.
+# Those are the board vendor's files under their own licence - fetch them from
+# the NM-CYD-C5 repository rather than redistributing them here.
+vendor/
+
+# Generated vendor tables and the IEEE registry they come from. The registry
+# is several MB and changes constantly; regenerate rather than commit it.
+oui.csv
+oui.txt
+vendors.txt
+
+# Sweep logs pulled off the SD card. These are session-pseudonymised but
+# advertised names and SSIDs can still be identifying - keep them out of git.
+#
+# NOTE: this block used to contain a bare "vulpecula/", matching the
+# firmware's SD log directory. On Windows git defaults to
+# core.ignorecase=true, so that pattern ALSO matched the Vulpecula/ sketch
+# folder and silently excluded the entire firmware - 38 files committed
+# instead of 61, with no warning at all. It does not reproduce on a
+# case-sensitive filesystem, which is exactly why it reached a user.
+#
+# Patterns here are anchored and specific for that reason. Never add a bare
+# directory name that could collide with a project folder; the hygiene check
+# fails if one does.
+/sweeps/
+vulp_*.csv
+*.csv
+!test/**/*.csv
+
+# Host test scratch
+/tmp/
+*.out
+a.out
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

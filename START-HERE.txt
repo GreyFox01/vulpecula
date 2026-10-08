@@ -1,0 +1,119 @@
+VULPECULA - START HERE
+======================
+
+ONE ARCHIVE, NOTHING LOOSE
+  Everything is inside this folder. If you have loose copies of README.md,
+  CALIBRATION.md, START-HERE.txt or check_layout.ps1 sitting OUTSIDE it,
+  delete them - they are duplicates, and running the stray check_layout.ps1
+  reports every project folder as missing because it is not inside a project
+  tree. The real one is at tools\check_layout.ps1 in here.
+
+WHAT THIS IS
+  A handheld bug sweeper for the RockBase IoT NM-CYD-C5 (ESP32-C5 Cheap
+  Yellow Display). Looks for wireless cameras and microphones within about
+  2 metres - i.e. in the room with you. Receive only.
+
+  Full documentation: README.md
+
+
+FOLDER LAYOUT - THIS MATTERS MORE THAN IT SHOULD
+------------------------------------------------
+  vulpecula-project\            <- extract to here; name it what you like
+      Vulpecula\                <- THE SKETCH FOLDER
+          Vulpecula.ino         <- open THIS in the Arduino IDE
+          src\                  <- the firmware. DO NOT MOVE OR RENAME
+      reference_beacon\
+          reference_beacon.ino  <- separate sketch, for a 2nd board
+      test\  tools\  *.md  LICENSE
+
+  The project root used to be called "Vulpecula" too, which gave
+  Vulpecula\Vulpecula\Vulpecula.ino - two nested folders with the same name as
+  the file. That is very easy to extract or drag into the wrong level of, and
+  it caused three separate build failures. Hence the distinct root name.
+
+  Two rules, both enforced by Arduino and neither obvious:
+
+    1. A sketch's .ino must have the SAME NAME as its parent folder.
+    2. Arduino compiles EVERY source file in a sketch folder, and puts that
+       folder on the include path. So a stray file there is not inert - it
+       gets built into the firmware, or shadows a real core header.
+
+  Each sketch folder holds exactly ONE .ino. The firmware lives in
+  Vulpecula\src\ and nowhere else.
+
+
+IF YOU PUSH TO GIT
+  Expect 61 tracked files, 23 of them under Vulpecula\. A much lower count
+  means something is excluding the firmware - check with
+      git check-ignore -v Vulpecula\Vulpecula.ino
+  Windows git is case-INSENSITIVE by default, so a .gitignore pattern like
+  "vulpecula/" will match the Vulpecula\ sketch folder and silently drop the
+  whole firmware. test\..\test\sketch_hygiene_check.py now fails on that.
+
+
+BEFORE YOU BUILD - VERIFY THE LAYOUT
+------------------------------------
+  Windows, no Python needed:
+      powershell -ExecutionPolicy Bypass -File tools\check_layout.ps1
+
+  It confirms every file listed in src\MANIFEST.txt is present, each sketch folder holds only
+  its own .ino, and nothing stray is lying around. Run it after any folder
+  shuffling. If it reports a missing file, re-extract rather than
+  reconstructing.
+
+  With Git Bash or WSL, the full suite is eight checks:
+      bash test/run_all.sh
+
+
+ARDUINO IDE SETUP
+-----------------
+  Boards Manager  : esp32 by Espressif, 3.3.5 or newer
+  Library Manager : NimBLE-Arduino by h2zero, 2.2.x or newer (only dependency)
+
+  Tools menu:
+      Board ............. ESP32C5 Dev Module
+      USB CDC On Boot ... Enabled
+      Flash Size ........ 16MB (128Mb)
+      Partition Scheme .. Huge APP (3MB No OTA/1MB SPIFFS)
+      PSRAM ............. ENABLED        <- required, or it halts at boot
+      Upload Speed ...... 460800
+
+  Plug into the ESP32-C5 USB-C port, not the CH340 one.
+
+  Keep this on a LOCAL drive. OneDrive can leave a file as a cloud
+  placeholder that looks present in Explorer but reads as empty to the
+  compiler, and can lock files mid-build.
+
+
+FIRST BOOT
+----------
+  1. Colour bars must read R G B left to right. If red and blue are swapped,
+     set PANEL_BGR 0 in Vulpecula\src\config.h.
+  2. Touch calibration runs automatically. Tap four crosshairs, then drag to
+     confirm the dot follows your finger, then ACCEPT.
+  3. Welcome screen. Radios stay off until you choose a sweep.
+
+
+BEFORE YOU TRUST A READING
+--------------------------
+  The gate thresholds are path-loss arithmetic plus an assumed margin, NOT a
+  measurement of your board and antenna. The list HIDES devices below the
+  NEAR threshold, so until you calibrate it is excluding things based on
+  arithmetic.
+
+  CALIBRATION.md - about half an hour, needs the reference beacon on a second
+  board. Two steps that matter:
+
+    1. RSSI calibration at 2.00 m and 0.30 m, per band.
+    2. Put the reference 2 m away through an interior wall and confirm it
+       reads ambient. Rejecting the next room is the entire premise.
+
+
+WHAT IT CANNOT FIND
+-------------------
+  A camera recording to an SD card with its radio off is INVISIBLE here. So
+  are LTE cameras, wired cameras and analog transmitters. No detector can
+  tell whether a device is recording. Absence of an alert is not proof of an
+  empty room. Always also check for lenses.
+
+  Sweep spaces you occupy or are authorised to assess.

@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly, so a pinned dependency that stops resolving is found before a
+    # release rather than during one.
+    - cron: "0 6 * * 1"
+
+# ---------------------------------------------------------------------------
+# Dependencies are PINNED, not floated.
+#
+# A library update can change behaviour between two identical commits, and
+# this firmware is flashed onto a device the operator has to trust. Bump these
+# deliberately, in a commit of their own, with the suite re-run.
+# ---------------------------------------------------------------------------
+env:
+  ESP32_CORE_VERSION: 3.3.11
+  NIMBLE_VERSION: 2.2.3
+  ARDUINO_INDEX: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+
+jobs:
+  host-checks:
+    name: Host checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the full suite
+        run: bash test/run_all.sh
+
+  # Coverage-guided fuzzing. run_all.sh already fuzzes with a fixed-seed
+  # generator plus a hand-written corpus, which is right for every commit;
+  # libFuzzer reaches states random bytes will not.
+  fuzz:
+    name: Fuzz parsers (guided)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with libFuzzer
+        run: |
+          clang++ -std=gnu++17 -O1 -g \
+            -fsanitize=fuzzer,address,undefined \
+            -DUSE_LIBFUZZER -I Vulpecula/src \
+            test/fuzz_parsers.cpp \
+            Vulpecula/src/parsers.cpp \
+            Vulpecula/src/proximity.cpp \
+            Vulpecula/src/vendor.cpp \
+            -o /tmp/fuzz
+      - name: Fuzz for two minutes
+        run: /tmp/fuzz -max_total_time=120 -print_final_stats=1
+      - name: Keep any crash input
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crash
+          path: |
+            crash-*
+            leak-*
+            timeout-*
+
+  # The authoritative compile. The host job uses stub headers and cannot see a
+  # real Arduino core problem.
+  #
+  # PSRAM, partition scheme and flash size are RUNTIME settings and do not
+  # affect whether the sketch compiles, so the bare FQBN is enough. They do
+  # matter when flashing: PSRAM must be enabled or the firmware halts at boot.
+  arduino-compile:
+    name: Compile for ESP32-C5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+
+      - name: Cache the ESP32 core and libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.arduino15
+            ~/Arduino
+          key: esp32-${{ env.ESP32_CORE_VERSION }}-nimble-${{ env.NIMBLE_VERSION }}
+
+      - name: Install pinned core and library
+        run: |
+          arduino-cli config init --overwrite
+          arduino-cli config add board_manager.additional_urls "$ARDUINO_INDEX"
+          arduino-cli core update-index
+          arduino-cli core install "esp32:esp32@${ESP32_CORE_VERSION}"
+          arduino-cli lib install "NimBLE-Arduino@${NIMBLE_VERSION}"
+          arduino-cli core list
+          arduino-cli lib list
+
+      - name: Show the board's FQBN options
+        run: arduino-cli board details --fqbn esp32:esp32:esp32c5 || true
+
+      - name: Compile Vulpecula
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32c5 \
+            --warnings more \
+            Vulpecula
+
+      - name: Compile the reference beacon
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:esp32da reference_beacon || \
+          arduino-cli compile --fqbn esp32:esp32:esp32 reference_beacon

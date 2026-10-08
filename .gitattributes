@@ -1,0 +1,47 @@
+# Line endings.
+#
+# WHY THIS MATTERS HERE
+#
+# CI runs test/run_all.sh on Ubuntu. If that file reaches the repository with
+# CRLF endings - easy to do by editing it in a Windows editor and committing
+# with core.autocrlf=false - bash fails with errors like
+#
+#     $'\r': command not found
+#     test/run_all.sh: line 2: syntax error near unexpected token
+#
+# which point at the script rather than at the line endings. Pinning the
+# endings per file type removes the whole class of problem regardless of how
+# anyone's git is configured.
+
+# Normalise everything in the repository to LF, and let git pick a sensible
+# working-copy form.
+* text=auto eol=lf
+
+# Must be LF: executed by bash and python on Linux in CI.
+*.sh    text eol=lf
+*.py    text eol=lf
+
+# Firmware and headers: LF, so a diff between a Windows and a Linux checkout
+# is about code rather than about every line.
+*.ino   text eol=lf
+*.cpp   text eol=lf
+*.h     text eol=lf
+
+# Documentation and data.
+*.md    text eol=lf
+*.txt   text eol=lf
+*.csv   text eol=lf
+*.yml   text eol=lf
+
+# PowerShell: CRLF is conventional on Windows and this only ever runs there.
+*.ps1   text eol=crlf
+
+# Never touch these.
+*.bin   binary
+*.zip   binary
+*.png   binary
+*.jpg   binary
+
+# The .ino is C++ for diff purposes; git does not infer that from the
+# extension.
+*.ino   diff=cpp
